@@ -1,5 +1,0 @@
-2026-08-20 20:35:53 INFO    find-leads: Already have 0 Apollo record(s) — they will not be re-enriched
-2026-08-20 20:35:53 INFO    baseleaf.apollo: Apollo search page=1 returned 1 stub(s) of 2336 total | minute 49/50 | hour 197/200 | 24h 597/600
-2026-08-20 20:35:59 INFO    find-leads: Already have 0 Apollo record(s) — they will not be re-enriched
-2026-08-20 20:35:59 INFO    baseleaf.apollo: Apollo search page=1 returned 25 stub(s) of 2336 total | minute 48/50 | hour 196/200 | 24h 596/600
-2026-08-20 20:41:17 WARNING baseleaf.leads: Skipping noconsent@example.com: no consent_basis recorded
