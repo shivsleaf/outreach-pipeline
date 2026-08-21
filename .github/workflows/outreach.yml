@@ -1,0 +1,90 @@
+name: Baseleaf outreach
+
+on:
+  schedule:
+    # Every 6 hours. Cron is UTC.
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      live:
+        description: "Actually send emails (otherwise dry run)"
+        type: boolean
+        default: false
+      send_limit:
+        description: "Max emails this run"
+        default: "10"
+      find_limit:
+        description: "Apollo enrichments this run (= credits spent)"
+        default: "5"
+
+# Never let two runs mutate the SQLite file at once.
+concurrency:
+  group: baseleaf-outreach
+  cancel-in-progress: false
+
+jobs:
+  outreach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # Restore the database so dedup, the rolling send cap, and the IMAP UID
+      # cursor survive between runs. The key is unique per run and the
+      # restore-keys prefix pulls the most recent previous cache — the standard
+      # rolling-cache pattern, since a cache entry cannot be overwritten.
+      - name: Restore database
+        uses: actions/cache/restore@v4
+        with:
+          path: outreach.db
+          key: baseleaf-db-${{ github.run_id }}
+          restore-keys: |
+            baseleaf-db-
+
+      - name: Run pipeline
+        env:
+          APOLLO_API_KEY: ${{ secrets.APOLLO_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PHYSICAL_ADDRESS: ${{ secrets.PHYSICAL_ADDRESS }}
+          UNSUBSCRIBE_SECRET: ${{ secrets.UNSUBSCRIBE_SECRET }}
+          UNSUBSCRIBE_BASE_URL: ${{ vars.UNSUBSCRIBE_BASE_URL }}
+          FREE_TOOL_URL: ${{ vars.FREE_TOOL_URL }}
+          FROM_NAME: ${{ vars.FROM_NAME }}
+          COMPANY_NAME: ${{ vars.COMPANY_NAME }}
+          DAILY_SEND_CAP: ${{ vars.DAILY_SEND_CAP || '25' }}
+        run: |
+          python cli.py init-db
+          python cli.py run \
+            --find-limit ${{ inputs.find_limit || '5' }} \
+            --send-limit ${{ inputs.send_limit || '10' }} \
+            ${{ inputs.live == true && '--live' || '' }}
+          python cli.py stats
+
+      # Always save, even on failure: a partial run still consumed Apollo
+      # credits and may have sent mail, and that state must not be lost.
+      - name: Save database
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: outreach.db
+          key: baseleaf-db-${{ github.run_id }}
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: outreach-logs-${{ github.run_id }}
+          path: logs/
+          retention-days: 14
+          if-no-files-found: ignore

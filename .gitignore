@@ -1,1 +1,21 @@
+# secrets
 .env
+.env.local
+*.pem
+
+# database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# logs
+logs/
+*.log

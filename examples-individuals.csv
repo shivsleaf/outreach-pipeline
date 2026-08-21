@@ -1,0 +1,3 @@
+email,first_name,last_name,location,consent_basis,consent_source,consent_at
+optedin@example.com,Priya,S,"Toronto, ON","submitted eligibility checker form, checkbox consent",baseleaf.com/eligibility-check,2026-08-19T14:02:00Z
+noconsent@example.com,Alex,M,"Vancouver, BC",,,
